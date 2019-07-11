@@ -170,7 +170,7 @@ def train_model(model, dataloaders, criterion, optimizer, epochs, device, imagen
                      'optimizer':optimizer.state_dict()
                      }
 
-            filepath = 'model_project_' + str(epoch+1) +'imagenet' + '.pth'
+            filepath = 'model_project_' + str(epoch+1) +imagenet + '.pth'
             torch.save(state, filepath)
         
     save_model(model, epoch, optimizer)
