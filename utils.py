@@ -82,7 +82,7 @@ def create_model(imagenet, learning_rate, hidden_units, epochs, device):
     main_dir = 'flowers'
     
     dataloaders = load_data(main_dir)
-    
+    model.class_to_idx = dataloaders['train'].class_to_idx
     model = train_model(model, dataloaders, criterion, optimizer, epochs, device, imagenet)
     
     print('Complete')
@@ -182,12 +182,15 @@ def save_model(model, epoch, optimizer):
     
     Parameters
     ----------
-    model:  the current model and it's architecture
+    model:          the current model and it's architecture
     
-    epoch:  int
-            the number of epochs - 1 (ie: for 25 passes epochs will be 24)
+    epoch:          int
+                    the number of epochs - 1 (ie: for 25 passes epochs will be 24)
         
-    optimizer: optimizer used to update the weights
+    optimizer:      optimizer used to update the weights
+    
+    class_to_idx:   dict 
+                    dictionary mapping the training folder names to the model's output
     
     Notes
     -----
@@ -200,7 +203,8 @@ def save_model(model, epoch, optimizer):
 
     state = {'epoch': epoch,
              'state_dict': model.state_dict(),
-             'optimizer':optimizer.state_dict()
+             'optimizer':optimizer.state_dict(),
+             'class_to_idx': model.class_to_idx
             }
     
     filepath = 'final_model.pth'
@@ -279,6 +283,8 @@ def load_model(filepath, hidden_units ,imagenet):
     state = torch.load(filepath)
     model.classifier = model_classifier(hidden_units)
     model.load_state_dict(state['state_dict'])
+    #see save_model(...) for description of class_to_idx
+    model.class_to_idx = state['class_to_idx']
     
     for param in model.parameters():
         param.requires_grad = False
@@ -347,11 +353,15 @@ def predict(image_path, model, device, json_path,  topk = 5):
     with open(json_path, 'r') as f:
         cat_to_name = json.load(f)
     
+    #need to flip class_to_idx. model's output is an int which is stored in the file's name so need to flip this around to get folder name to then flip into flower name
+    output_to_cat_keys = {v: k for k, v in (model.class_to_idx).items()}
+    
     #need to convert to 'cpu' or else we get an error if its on the GPU, error is that .numpy() doesn't work on GPU
+    
     top_class = top_class.to('cpu').numpy()
     top_p = top_p.to('cpu').numpy()
     for i in top_class[0]:
-        names.append(cat_to_name[str(i)])
+        names.append(cat_to_name[str(output_to_cat_keys[(i)])])
     
     #returning a numpy array for the probabilities
     return top_p, names    
