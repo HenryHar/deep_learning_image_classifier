@@ -81,8 +81,7 @@ def create_model(imagenet, learning_rate, hidden_units, epochs, device):
 
     main_dir = 'flowers'
     
-    dataloaders = load_data(main_dir)
-    model.class_to_idx = dataloaders['train'].class_to_idx
+    dataloaders, model.class_to_idx = load_data(main_dir)
     model = train_model(model, dataloaders, criterion, optimizer, epochs, device, imagenet)
     
     print('Complete')
@@ -252,7 +251,7 @@ def load_data(main_dir):
                'validate': torch.utils.data.DataLoader(valid_dataset_imgs, batch_size = 64, shuffle=True),
                'test': torch.utils.data.DataLoader(test_dataset_imgs, batch_size = 64, shuffle=False)}
 
-    return dataloaders
+    return dataloaders, train_dataset_imgs.class_to_idx
 
 def load_model(filepath, hidden_units ,imagenet):
     ''' Returns a model after having loaded the saved PyTorch (.pth) model. Model can be used for predictions

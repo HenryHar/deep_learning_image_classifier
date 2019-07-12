@@ -39,6 +39,12 @@ parser.add_argument('-load_json', '--load_json', help = 'Specify JSON file to ma
 
 if __name__ == '__main__':
     
+    model_choices = ['densenet121', 'densenet169','densenet201','densenet161', 'inception_v3']
+    
+    while args.imagenet not in model_choices:
+        print('Please choose one of the following models:', model_choices)
+        args.imagenet = input()
+    
     if args.gpu == 'gpu':
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         if device == 'cpu':
