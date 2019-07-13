@@ -23,9 +23,11 @@ from utils import create_model
 parser = argparse.ArgumentParser(description = 'Currently supports densenet and inception models from ImageNet')
 
 parser.add_argument('-m', '--imagenet', type= str, required=True, help='ImageNet model for pytorch, type string')
+parser.add_argument('-d', '--directory', type= str, required=True, help='directory containing train, validate and test data')
 parser.add_argument('-lr', '--learning_rate', type =float, required=True, help='Learning rate for optimizer')
 parser.add_argument('-hu', '--hidden_units', type = int, required=True, help ='Number of hidden units in first layer')
 parser.add_argument('-e', '--epochs', type = int, required=True, help ='Number of Training Epochs')
+
 
 parser.add_argument('-gpu', '--gpu', type = str, required=True, help = 'Train on GPU? type gpu or cpu')
 
@@ -39,11 +41,21 @@ parser.add_argument('-load_json', '--load_json', help = 'Specify JSON file to ma
 
 if __name__ == '__main__':
     
-    model_choices = ['densenet121', 'densenet169','densenet201','densenet161', 'inception_v3']
+    model_choices = ['densenet161','densenet201']   # 201 has 1920, densenet161 has 2208 both have 1.000 output
     
     while args.imagenet not in model_choices:
         print('Please choose one of the following models:', model_choices)
         args.imagenet = input()
+    
+    if args.imagenet == 'densenet161':
+        while(args.hidden_units > 2208 or args.hidden_units < 1242):
+            print('please modify hidden_units parameter, must be greater then 1241 and smaller then 2209')
+            args.hidden_units = int(input())
+            
+    if args.imagenet == 'densenet201':
+        while (args.hidden_units> 1920 or args.hidden_units < 1242):
+            print('please modify hidde_units parameters, must be greater then 1241 and smaller then 1921')
+            args.hidden_units = int(input())
     
     if args.gpu == 'gpu':
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -60,4 +72,4 @@ if __name__ == '__main__':
         device = torch.device('cpu')
     
     
-    create_model(args.imagenet,args.learning_rate, args.hidden_units, args.epochs, device)
+    create_model(args.imagenet, args.directory, args.learning_rate, args.hidden_units, args.epochs, device)

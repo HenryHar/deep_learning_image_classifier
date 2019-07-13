@@ -8,12 +8,14 @@ from PIL import Image
 
 
 class model_classifier(nn.Module):
-    def __init__(self, hidden_units):
+    def __init__(self, hidden_units, input_units):
+        print('HELLO',input_units, hidden_units)
         super().__init__()
-        self.fc1 = nn.Linear(hidden_units, 1656)
-        self.fc2 = nn.Linear(1656, 1242)
-        self.fc3 = nn.Linear(1242, 1000)
 
+        self.fc1 = nn.Linear(input_units, hidden_units)
+        self.fc2 = nn.Linear(hidden_units, 1242)
+        self.fc3 = nn.Linear(1242, 1000)
+        
         self.dropout = nn.Dropout(p=0.2)
 
     def forward(self, x):
@@ -29,7 +31,7 @@ class model_classifier(nn.Module):
         return x
 
 
-def create_model(imagenet, learning_rate, hidden_units, epochs, device):
+def create_model(imagenet, directory, learning_rate, hidden_units, epochs, device):
     ''' Creates a fully trained neural network
     
     Parameters
@@ -37,6 +39,8 @@ def create_model(imagenet, learning_rate, hidden_units, epochs, device):
     
     imagenet:       string
                     The name of the imagenet model that you want to use to setup your features for your classifier (Eg: densenet161)
+    directory:      string
+                    directory that contains train, validate and test folders eg: 'flowers'
     learning_rate:  float
                     the learning rate used in your optimizer
     hidden_units:   int
@@ -65,25 +69,30 @@ def create_model(imagenet, learning_rate, hidden_units, epochs, device):
     
     '''
     
-    model = models.densenet161(pretrained=True) 
-    #need to create the model or else the code bugs out at the next line, model gets overwritten
-    exec("model = models.{}(pretrained=True)".format(imagenet))
+    if imagenet == 'densenet161':
+        model = models.densenet161(pretrained=True)
+        input_units = 2208
+    
+    if imagenet == 'densenet201':
+        model = models.densenet201(pretrained=True)
+        input_units = 1920
 
     for param in model.parameters():
         param.requires_grad = False
 
-    classifier = model_classifier(hidden_units)
+    classifier = model_classifier(hidden_units, input_units)
     model.classifier = classifier
     model.to(device)
-
+    print(model.classifier)
     criterion = nn.NLLLoss()
     optimizer = optim.SGD(model.classifier.parameters(), lr = learning_rate)
 
-    main_dir = 'flowers'
+    main_dir = directory
     
     dataloaders, model.class_to_idx = load_data(main_dir)
-    model = train_model(model, dataloaders, criterion, optimizer, epochs, device, imagenet)
+    model, epoch, optimizer = train_model(model, dataloaders, criterion, optimizer, epochs, device, imagenet)
     
+    save_model(model, epoch, optimizer, imagenet, hidden_units, input_units)    
     print('Complete')
     return model
 
@@ -113,7 +122,6 @@ def train_model(model, dataloaders, criterion, optimizer, epochs, device, imagen
     
     print(device)
     test_losses, train_losses, test_accuracy =[], [], []
-    save_every = 5
     
     for epoch in range(0,epochs):
         running_loss = 0
@@ -162,26 +170,15 @@ def train_model(model, dataloaders, criterion, optimizer, epochs, device, imagen
                   "Training Loss: {:.3f}.. ".format(running_loss/len(dataloaders['train'])),
                   "Test Loss: {:.3f}.. ".format(test_loss/len(dataloaders['validate'])),
                   "Test Accuracy: {:.3f}".format(accuracy))
-
-        if (epoch + 1) % save_every ==0:
-            state = {'epoch': epoch,
-                     'state_dict': model.state_dict(),
-                     'optimizer':optimizer.state_dict()
-                     }
-
-            filepath = 'model_project_' + str(epoch+1) +imagenet + '.pth'
-            torch.save(state, filepath)
-        
-    save_model(model, epoch, optimizer)
     
-    return model
+    return model, epoch, optimizer
 
-def save_model(model, epoch, optimizer):
+def save_model(model, epoch, optimizer, imagenet, hidden_units, input_units):
     ''' Saves the final model after all epochs
     
     Parameters
     ----------
-    model:          the current model and it's architecture
+    model:          the current model
     
     epoch:          int
                     the number of epochs - 1 (ie: for 25 passes epochs will be 24)
@@ -190,7 +187,12 @@ def save_model(model, epoch, optimizer):
     
     class_to_idx:   dict 
                     dictionary mapping the training folder names to the model's output
+    imagenet:       imagenet name
     
+    hidden_units    
+    
+    input_units
+
     Notes
     -----
     
@@ -200,11 +202,14 @@ def save_model(model, epoch, optimizer):
     '''
     # state_dict:     dictioanry containing the model's state (architecture + tensors)
 
-    state = {'epoch': epoch,
-             'state_dict': model.state_dict(),
-             'optimizer':optimizer.state_dict(),
-             'class_to_idx': model.class_to_idx
-            }
+    state = {'epoch': epoch, # done
+             'state_dict': model.state_dict(),    #done
+             'optimizer':optimizer.state_dict(),  #done
+             'class_to_idx': model.class_to_idx,  #done
+             'arch': imagenet,
+             'hidden_units': hidden_units,        #saved for loading purposes
+             'input_units': input_units           
+             }
     
     filepath = 'final_model.pth'
     torch.save(state, filepath)
@@ -241,19 +246,17 @@ def load_data(main_dir):
                                                            [0.229,0.224,0.225])])
 
 
-    # TODO: Load the datasets with ImageFolder
     train_dataset_imgs = datasets.ImageFolder(train_dir, transform = train_transforms)
     valid_dataset_imgs = datasets.ImageFolder(valid_dir, transform = test_transforms)
     test_dataset_imgs  = datasets.ImageFolder(test_dir,  transform = test_transforms)
 
-# TODO: Using the image datasets and the trainforms, define the dataloaders
     dataloaders = {'train': torch.utils.data.DataLoader(train_dataset_imgs, batch_size = 64, shuffle=True),
                'validate': torch.utils.data.DataLoader(valid_dataset_imgs, batch_size = 64, shuffle=True),
                'test': torch.utils.data.DataLoader(test_dataset_imgs, batch_size = 64, shuffle=False)}
 
     return dataloaders, train_dataset_imgs.class_to_idx
 
-def load_model(filepath, hidden_units ,imagenet):
+def load_model(filepath):
     ''' Returns a model after having loaded the saved PyTorch (.pth) model. Model can be used for predictions
     
     Parameters
@@ -273,15 +276,18 @@ def load_model(filepath, hidden_units ,imagenet):
     
     model name is printed
     '''
-    print(imagenet)
-    model = models.densenet161(pretrained=True)
-    
-    if imagenet != 'densenet161' :
-        exec("model = models.{}(pretrained=True)".format(imagenet))
-    
     state = torch.load(filepath)
-    model.classifier = model_classifier(hidden_units)
-    model.load_state_dict(state['state_dict'])
+    
+    if state['arch'] == 'densenet161':
+        model = models.densenet161(pretrained=True)
+    elif state['arch'] == 'densenet201':
+        model = models.densenet201(pretrained=True)
+    
+#    model.name == state['arch']
+    
+    #model.name = state['arch']
+    model.classifier = model_classifier(state['hidden_units'], state['input_units'])
+    model.load_state_dict(state['state_dict'])       
     #see save_model(...) for description of class_to_idx
     model.class_to_idx = state['class_to_idx']
     

@@ -29,8 +29,6 @@ parser.add_argument('-c', '--checkpoint', type = str, required=True, help = 'PyT
 parser.add_argument('-tk', '--topk', type = int, required=True, help = 'Number of Top probability classes to print')
 parser.add_argument('-json', '--json', type = str, required=True, help = 'JSON file for class names')
 parser.add_argument('-gpu', '--gpu', type = str, required=True, help = 'Train on GPU? type gpu or cpu')
-parser.add_argument('-m', '--model', type=str, required=False, help='Optional: model type from ImageNet, else will default to densenet161')
-parser.add_argument('-hu', '--hidden_units', type= int, required=False, help='Optional: hidden units in first layer, must be bigger then 1656')
 
 args = parser.parse_args()
 
@@ -49,13 +47,7 @@ if __name__ == '__main__':
     else :
         print('inputs were not undertsood, predictions will be generated on CPU')
         device = torch.device('cpu')
-        
-    if args.model == None:
-        args.model = 'densenet161'
-        
-    if args.hidden_units == None:
-        args.hidden_units = 2208
-        
-    model = load_model(args.checkpoint, imagenet = args.model, hidden_units = args.hidden_units)
+   
+    model = load_model(args.checkpoint)
     
     print(predict(args.image, model, device, args.json, args.topk))
