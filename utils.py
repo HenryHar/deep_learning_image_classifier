@@ -9,7 +9,6 @@ from PIL import Image
 
 class model_classifier(nn.Module):
     def __init__(self, hidden_units, input_units):
-        print('HELLO',input_units, hidden_units)
         super().__init__()
 
         self.fc1 = nn.Linear(input_units, hidden_units)
@@ -83,7 +82,6 @@ def create_model(imagenet, directory, learning_rate, hidden_units, epochs, devic
     classifier = model_classifier(hidden_units, input_units)
     model.classifier = classifier
     model.to(device)
-    print(model.classifier)
     criterion = nn.NLLLoss()
     optimizer = optim.SGD(model.classifier.parameters(), lr = learning_rate)
 
@@ -93,7 +91,6 @@ def create_model(imagenet, directory, learning_rate, hidden_units, epochs, devic
     model, epoch, optimizer = train_model(model, dataloaders, criterion, optimizer, epochs, device, imagenet)
     
     save_model(model, epoch, optimizer, imagenet, hidden_units, input_units)    
-    print('Complete')
     return model
 
 
@@ -120,7 +117,6 @@ def train_model(model, dataloaders, criterion, optimizer, epochs, device, imagen
                     
     '''
     
-    print(device)
     test_losses, train_losses, test_accuracy =[], [], []
     
     for epoch in range(0,epochs):
