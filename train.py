@@ -46,17 +46,7 @@ if __name__ == '__main__':
     while args.imagenet not in model_choices:
         print('Please choose one of the following models:', model_choices)
         args.imagenet = input()
-    
-    if args.imagenet == 'densenet161':
-        while(args.hidden_units > 2208 or args.hidden_units < 1242):
-            print('please modify hidden_units parameter, must be greater then 1241 and smaller then 2209')
-            args.hidden_units = int(input())
-            
-    if args.imagenet == 'densenet201':
-        while (args.hidden_units> 1920 or args.hidden_units < 1242):
-            print('please modify hidde_units parameters, must be greater then 1241 and smaller then 1921')
-            args.hidden_units = int(input())
-    
+
     if args.gpu == 'gpu':
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         if device == 'cpu':

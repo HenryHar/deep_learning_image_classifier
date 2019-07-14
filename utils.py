@@ -8,12 +8,12 @@ from PIL import Image
 
 
 class model_classifier(nn.Module):
-    def __init__(self, hidden_units, input_units):
+    def __init__(self, hidden_units, input_units, outputs):
         super().__init__()
 
         self.fc1 = nn.Linear(input_units, hidden_units)
         self.fc2 = nn.Linear(hidden_units, 1242)
-        self.fc3 = nn.Linear(1242, 1000)
+        self.fc3 = nn.Linear(1242, outputs)
         
         self.dropout = nn.Dropout(p=0.2)
 
@@ -79,18 +79,18 @@ def create_model(imagenet, directory, learning_rate, hidden_units, epochs, devic
     for param in model.parameters():
         param.requires_grad = False
 
-    classifier = model_classifier(hidden_units, input_units)
+    dataloaders, model.class_to_idx = load_data(directory)
+    classifier = model_classifier(hidden_units, input_units, outputs = len(model.class_to_idx))
     model.classifier = classifier
+
     model.to(device)
     criterion = nn.NLLLoss()
     optimizer = optim.SGD(model.classifier.parameters(), lr = learning_rate)
-
-    main_dir = directory
     
-    dataloaders, model.class_to_idx = load_data(main_dir)
+
     model, epoch, optimizer = train_model(model, dataloaders, criterion, optimizer, epochs, device, imagenet)
     
-    save_model(model, epoch, optimizer, imagenet, hidden_units, input_units)    
+    save_model(model, epoch, optimizer, imagenet, hidden_units, input_units, len(model.class_to_idx))    
     return model
 
 
@@ -169,7 +169,7 @@ def train_model(model, dataloaders, criterion, optimizer, epochs, device, imagen
     
     return model, epoch, optimizer
 
-def save_model(model, epoch, optimizer, imagenet, hidden_units, input_units):
+def save_model(model, epoch, optimizer, imagenet, hidden_units, input_units, output_units):
     ''' Saves the final model after all epochs
     
     Parameters
@@ -204,7 +204,8 @@ def save_model(model, epoch, optimizer, imagenet, hidden_units, input_units):
              'class_to_idx': model.class_to_idx,  #done
              'arch': imagenet,
              'hidden_units': hidden_units,        #saved for loading purposes
-             'input_units': input_units           
+             'input_units': input_units, 
+             'output': output_units
              }
     
     filepath = 'final_model.pth'
@@ -282,7 +283,7 @@ def load_model(filepath):
 #    model.name == state['arch']
     
     #model.name = state['arch']
-    model.classifier = model_classifier(state['hidden_units'], state['input_units'])
+    model.classifier = model_classifier(state['hidden_units'], state['input_units'], state['output'])
     model.load_state_dict(state['state_dict'])       
     #see save_model(...) for description of class_to_idx
     model.class_to_idx = state['class_to_idx']
